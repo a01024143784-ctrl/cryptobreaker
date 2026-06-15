@@ -4,13 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn --worker-class gthread --threads 8 --timeout 0 --keep-alive 75 app:app
     envVars:
-      - key: DASH_USER
-        value: admin
-      - key: DASH_PASS
-        value: ""
-      - key: CBP_DB_PATH
-        value: cryptobreaker_cbp.db
-      - key: CBP_DEFAULT_USER
-        value: guest
+      - key: PYTHON_VERSION
+        value: 3.11.9

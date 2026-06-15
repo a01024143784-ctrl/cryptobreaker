@@ -1,7 +1,4 @@
-.env
 __pycache__/
 *.pyc
+.env
 *.zip
-*_BACKUP.*
-README_*.txt
-run_*.bat

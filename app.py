@@ -2641,29 +2641,6 @@ def sse_stream():
 def api_cbk_claim():
     return jsonify({"ok": True, "success": True, "message": "CBK 보상 기능은 준비중입니다."})
 
-# ── 28-2D FIX: 프론트 보조 API (대시보드 캐시 기반) ─────────────
-@app.route("/api/dominance")
-def api_dominance_compat():
-    return jsonify({"ok": True, "dominance": cache.get("dominance", {}), "dom_updated": cache.get("dom_updated")})
-
-@app.route("/api/oi-flow")
-def api_oi_flow_compat():
-    oi = cache.get("oi_surge", []) or []
-    up = cache.get("surge_up", []) or []
-    dn = cache.get("surge_dn", []) or []
-    return jsonify({
-        "ok": True,
-        "oi_surge": oi,
-        "plus_oi_price_up": len(up),
-        "plus_oi_price_down": len(dn),
-        "new_entry": len(oi),
-        "liquidation_warning": 0,
-    })
-
-@app.route("/api/fear-greed")
-def api_fear_greed_compat():
-    return jsonify({"ok": True, "value": 68, "status": "Greed", "note": "fallback"})
-
 if __name__ == "__main__":
     print("=" * 62)
     print("  도미넌스 플로우 + MEXC 알트 + 텔레그램 봇 [보안 강화]")
@@ -2696,4 +2673,28 @@ if __name__ == "__main__":
         print(f"[시작 오류] {e}")
         traceback.print_exc()
     # 127.0.0.1 = 내 PC에서만 접근 가능 (같은 네트워크 차단)
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=False, threaded=True)
+    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+
+
+# ── 28-2D FIX: 프론트 보조 API (대시보드 캐시 기반) ─────────────
+@app.route("/api/dominance")
+def api_dominance_compat():
+    return jsonify({"ok": True, "dominance": cache.get("dominance", {}), "dom_updated": cache.get("dom_updated")})
+
+@app.route("/api/oi-flow")
+def api_oi_flow_compat():
+    oi = cache.get("oi_surge", []) or []
+    up = cache.get("surge_up", []) or []
+    dn = cache.get("surge_dn", []) or []
+    return jsonify({
+        "ok": True,
+        "oi_surge": oi,
+        "plus_oi_price_up": len(up),
+        "plus_oi_price_down": len(dn),
+        "new_entry": len(oi),
+        "liquidation_warning": 0,
+    })
+
+@app.route("/api/fear-greed")
+def api_fear_greed_compat():
+    return jsonify({"ok": True, "value": 68, "status": "Greed", "note": "fallback"})
