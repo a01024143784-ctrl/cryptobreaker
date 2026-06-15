@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: cryptobreaker
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: DASH_USER
+        value: admin
+      - key: DASH_PASS
+        value: ""
+      - key: CBP_DB_PATH
+        value: cryptobreaker_cbp.db
+      - key: CBP_DEFAULT_USER
+        value: guest
