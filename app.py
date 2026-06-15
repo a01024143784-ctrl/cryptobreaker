@@ -2641,40 +2641,61 @@ def sse_stream():
 def api_cbk_claim():
     return jsonify({"ok": True, "success": True, "message": "CBK 보상 기능은 준비중입니다."})
 
-if __name__ == "__main__":
+
+# ════════════════════════════════════════════════════════
+# Render / Gunicorn 시작 보정
+# - gunicorn app:app 으로 실행되면 __main__ 블록이 실행되지 않으므로
+#   백그라운드 수집 스레드를 import 시점에 1회 시작한다.
+# ════════════════════════════════════════════════════════
+_bg_started = False
+_bg_lock = threading.Lock()
+
+def start_background_services():
+    global _bg_started
+    with _bg_lock:
+        if _bg_started:
+            return
+        _bg_started = True
+
     print("=" * 62)
-    print("  도미넌스 플로우 + MEXC 알트 + 텔레그램 봇 [보안 강화]")
+    print("  CryptoBreaker Render Start")
     print(f"  선물 갱신    : {REFRESH_FUTURES}초")
     print(f"  도미 갱신    : {REFRESH_DOMINANCE}초")
-    print(f"  접속 주소    : http://localhost:5000")
-    print(f"  보안 로그    : http://localhost:5000/api/security_log")
     print("=" * 62)
 
-    check_security()
-
     try:
+        check_security()
+
         print("[시작] 거래소 심볼 로드 중...")
         threading.Thread(target=load_exchange_symbols, daemon=True).start()
-        print("[시작] 도미넌스 수집 중...")
-        fetch_dominance()
-        print("[시작] 현물 가격 수집 중...")
-        fetch_spot_prices()
-        print("[시작] 선물 데이터 최초 수집 중... (REST)")
-        fetch_futures()
+
+        print("[시작] 초기 데이터 수집 중...")
+        try:
+            fetch_dominance()
+        except Exception as e:
+            print(f"[도미넌스 초기 수집 오류] {e}")
+
+        try:
+            fetch_spot_prices()
+        except Exception as e:
+            print(f"[현물 초기 수집 오류] {e}")
+
+        try:
+            fetch_futures()
+        except Exception as e:
+            print(f"[선물 초기 수집 오류] {e}")
+
         print("[시작] 백그라운드 스레드 시작...")
         threading.Thread(target=bg_dominance, daemon=True).start()
         threading.Thread(target=bg_websocket, daemon=True).start()
         threading.Thread(target=bg_ws_processor, daemon=True).start()
         threading.Thread(target=bg_futures,   daemon=True).start()
         threading.Thread(target=bg_spot,      daemon=True).start()
-        print("[시작] 완료 ✅ (웹소켓/SSE 실시간 출력 활성화)")
+        print("[시작] 완료 ✅ (Render/Gunicorn 백그라운드 활성화)")
     except Exception as e:
         import traceback
         print(f"[시작 오류] {e}")
         traceback.print_exc()
-    # 127.0.0.1 = 내 PC에서만 접근 가능 (같은 네트워크 차단)
-    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
-
 
 # ── 28-2D FIX: 프론트 보조 API (대시보드 캐시 기반) ─────────────
 @app.route("/api/dominance")
@@ -2698,3 +2719,32 @@ def api_oi_flow_compat():
 @app.route("/api/fear-greed")
 def api_fear_greed_compat():
     return jsonify({"ok": True, "value": 68, "status": "Greed", "note": "fallback"})
+
+
+# ── Render 호환: 프론트가 /api/cbk/* 를 호출하는 경우 기존 /api/cbp/* 로 연결 ──
+@app.route("/api/cbk/profile")
+def api_cbk_profile_alias():
+    return api_cbp_profile()
+
+@app.route("/api/cbk/game/config")
+def api_cbk_game_config_alias():
+    return api_cbp_game_config()
+
+@app.route("/api/cbk/game/play", methods=["POST"])
+def api_cbk_game_play_alias():
+    return api_cbp_game_play()
+
+@app.route("/api/cbk/game/settle", methods=["POST"])
+def api_cbk_game_settle_alias():
+    return api_cbp_game_settle()
+
+@app.route("/api/cbk/reset", methods=["POST"])
+def api_cbk_reset_alias():
+    return api_cbp_reset()
+
+# gunicorn app:app 에서도 데이터 수집 스레드 시작
+start_background_services()
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
